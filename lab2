@@ -1,0 +1,742 @@
+/**********************************************************************/
+// ENGR-2350 Template Project
+// Name: Wyatt Garber and Jennifer Canfield
+// RIN: 661721523 and 661992677
+// This is the base project for several activities and labs throughout
+// the course.  The outline provided below isn't necessarily *required*
+// by a C program; however, this format is required within ENGR-2350
+// to ease debugging/grading by the staff.
+/**********************************************************************/
+
+// We'll always add this include statement. This basically takes the
+// code contained within the "engr_2350_msp432.h" file and adds it here.
+#include "engr2350_msp432.h"
+#include <stdlib.h>
+
+// Add function prototypes here, as needed.
+void Timer_Init();
+void GPIO_Init();
+void Port4_ISR();
+void Timer_ISR();
+void UpdateTime();
+void Color_Wait(); //method to wait in between colors
+int Check_Color(uint8_t color);
+void Win();
+void Lose();
+
+void Red();
+void Blue();
+void Green();
+void Cyan();
+void Yellow();
+void Magenta();
+void NoColor();
+
+// Add global variables here, as needed.
+
+Timer_A_UpModeConfig TimerAc; //struct var
+uint16_t timer_reset_counter = 0;
+uint8_t time1[4];
+uint8_t BMP0; //4.0
+uint8_t BMP1; //4.2
+uint8_t BMP2; //4.3
+uint8_t BMP3; //4.5
+uint8_t BMP4; //4.6
+uint8_t BMP5; //4.7
+uint8_t push;
+uint8_t series[10];
+uint8_t answer; //answer
+
+uint8_t intro = 1;
+uint8_t i;
+uint8_t j;
+uint8_t x;
+uint8_t color;
+uint8_t game_over = 0;
+
+int main(void) /* Main Function */
+{
+    printf("The game loop starts with the program generating a 10 element color pattern, \n"
+           "consisting of the colors red, green, blue, purple (magenta), cyan (light blue), \n"
+           "or yellow. Press the corresponding bumper for the light shown. Each round will increase by one color.\n"
+           "Win by completing the full 10 color pattern correctly, lose if any incorrect color is pressed or time is up.\n");
+
+    printf("Button Color Code:\n"); //
+    printf(" [");
+    printf("\033[1;31m");
+    printf(" X");
+    printf("\033[0m");
+    printf(" ] ");
+    printf(" [");
+    printf("\033[1;32m");
+    printf(" X");
+    printf("\033[0m");
+    printf(" ] ");
+    printf("\033[0m");
+    printf(" [");
+    printf("\033[1;34m");
+    printf(" X");
+    printf("\033[0m");
+    printf(" ] ");
+    printf(" [");
+    printf("\033[1;33m");
+    printf(" X");
+    printf("\033[0m");
+    printf(" ] ");
+    printf(" [");
+    printf("\033[1;36m");
+    printf(" X");
+    printf("\033[0m");
+    printf(" ] ");
+    printf(" [");
+    printf("\033[1;35m");
+    printf(" X");
+    printf("\033[0m");
+    printf(" ] ");
+
+    // We always call the "SysInit()" first to set up the microcontroller
+    // for how we are going to use it.
+    SysInit();
+    GPIO_Init();
+    Timer_Init();
+
+    // Place initialization code (or run-once) code here
+
+    while (1)
+    {
+        game_over = 0;
+        //this is the main game loop. breaking the loop functionally counts as a reset
+        push = GPIO_getInputPinValue(GPIO_PORT_P2, GPIO_PIN3);
+        while (push)
+        {
+            GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN5); //set
+            GPIO_setOutputHighOnPin(GPIO_PORT_P2, GPIO_PIN4); //set
+            //Pattern Generation Code
+            srand((time(0)));
+            for (j = 0; j < 10; j++)
+            {
+                series[j] = rand() % 6;
+                //printf("%u", series[i]);
+            }
+
+            //Sample Pattern Repetition Code
+            /*for (i = 0; i < 10; i++)
+             {
+             color = series[i];
+             if (color == 0)
+             {
+             Red();
+             Color_Wait();
+             }
+             if (color == 1)
+             {
+             Green();
+             Color_Wait();
+             }
+             if (color == 2)
+             {
+             Blue();
+             Color_Wait();
+             }
+             if (color == 3)
+             {
+             Yellow();
+             Color_Wait();
+             }
+             if (color == 4)
+             {
+             Cyan();
+             Color_Wait();
+             }
+             if (color == 5)
+             {
+             Magenta();
+             Color_Wait();
+             }
+             //push = 0;
+             }*/
+            for (x = 0; x < 10; x++)
+            {
+                {
+                    for (i = 0; i < x; i++)
+                        if (game_over == 0)
+                        {
+                            color = series[i];
+                            Color_Wait();
+                            GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN5); //set BiLED GREEN
+                            GPIO_setOutputHighOnPin(GPIO_PORT_P2, GPIO_PIN4); //set GREEN
+                            if (color == 0)
+                            {
+                                Red();
+                                Color_Wait();
+                            }
+                            if (color == 1)
+                            {
+                                Green();
+                                Color_Wait();
+                            }
+                            if (color == 2)
+                            {
+                                Blue();
+                                Color_Wait();
+                            }
+                            if (color == 3)
+                            {
+                                Yellow();
+                                Color_Wait();
+                            }
+                            if (color == 4)
+                            {
+                                Cyan();
+                                Color_Wait();
+                            }
+                            if (color == 5)
+                            {
+                                Magenta();
+                                Color_Wait();
+                            }
+                            timer_reset_counter = 0;
+                            answer = 2;
+                            while (timer_reset_counter < 60 && answer == 2)
+                            {
+                                GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN4); //set BiLED RED
+                                GPIO_setOutputHighOnPin(GPIO_PORT_P2,
+                                                        GPIO_PIN5); //set RED
+                                answer = Check_Color(color);
+                                //printf("%u", answer);
+                            }
+                            if (answer != 1)
+                            {
+                                Lose();
+                            }
+                            else
+                            {
+                                if (x == 9)
+                                {
+                                    Win();
+                                }
+                            }
+                        }
+                }
+
+            }
+            push = 0; //push is not pressed
+
+        }
+
+        //everything after this doesn't happen in the game, but rather in the trial phase
+        GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN4 | GPIO_PIN5);
+        //Pushbutton color testing code - trial phase
+        BMP0 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN0); //4.0
+        BMP1 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN2); //4.2
+        BMP2 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN3); //4.3
+        BMP3 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN5); //4.5
+        BMP4 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN6); //4.6
+        BMP5 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN7); //4.7
+
+        while (BMP0 == 0)
+        {
+            __delay_cycles(240e3);
+            Red(); //color() associated with the button
+            BMP0 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN0);
+            if (BMP0 == 1)
+            {
+                NoColor();
+            }
+
+        }
+        while (BMP1 == 0)
+        {
+            __delay_cycles(240e3);
+            Green(); //color() associated with the button
+            BMP1 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN2);
+            if (BMP1 == 1)
+            {
+                NoColor();
+            }
+        }
+        while (BMP2 == 0)
+        {
+            __delay_cycles(240e3);
+            Blue(); //color() associated with the button
+            BMP2 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN3);
+            if (BMP2 == 1)
+            {
+                NoColor();
+            }
+
+        }
+        while (BMP3 == 0)
+        {
+            __delay_cycles(240e3);
+            Yellow(); //color() associated with the button
+            BMP3 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN5);
+            if (BMP3 == 1)
+            {
+                NoColor();
+            }
+
+        }
+        while (BMP4 == 0)
+        {
+            __delay_cycles(240e3);
+            Cyan(); //color() associated with the button
+            BMP4 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN6);
+            if (BMP4 == 1)
+            {
+                NoColor();
+            }
+
+        }
+
+        while (BMP5 == 0)
+        {
+            __delay_cycles(240e3);
+            Magenta(); //color() associated with the button
+            BMP5 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN7);
+            if (BMP5 == 1)
+            {
+                NoColor();
+            }
+
+        }
+        //GPIO_setOutputLowOnPin(GPIO_PORT_P4, GPIO_PIN0 | GPIO_PIN2 | GPIO_PIN3 | GPIO_PIN5 | GPIO_PIN6 | GPIO_PIN7);
+
+        // Sample Timer Check, to be used later
+
+    }
+
+}
+
+void GPIO_Init()
+{
+
+    GPIO_setAsInputPinWithPullDownResistor( GPIO_PORT_P2, GPIO_PIN3); //set main pushbutton
+    GPIO_setAsInputPinWithPullUpResistor(
+            GPIO_PORT_P4,
+            GPIO_PIN0 | GPIO_PIN2 | GPIO_PIN3 | GPIO_PIN5 | GPIO_PIN6
+                    | GPIO_PIN7); //set BMPs to pb with pullupresistor
+    GPIO_setAsOutputPin(GPIO_PORT_P2, GPIO_PIN4 | GPIO_PIN5); //BiLED setup
+    GPIO_setAsOutputPin(GPIO_PORT_P2, GPIO_PIN0 | GPIO_PIN1 | GPIO_PIN2); //RGBLED setup
+    GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN0 | GPIO_PIN1 | GPIO_PIN2);
+    GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN4 | GPIO_PIN5); //set BiColor led off
+    push = 0;
+
+    GPIO_registerInterrupt( GPIO_PORT_P4, Port4_ISR);
+    GPIO_interruptEdgeSelect( GPIO_PORT_P4, GPIO_PIN0,
+    GPIO_HIGH_TO_LOW_TRANSITION); //generate interrupts for bmp0
+    GPIO_interruptEdgeSelect( GPIO_PORT_P4, GPIO_PIN2,
+    GPIO_HIGH_TO_LOW_TRANSITION); //generate interrupts for bmp2
+    GPIO_interruptEdgeSelect( GPIO_PORT_P4, GPIO_PIN3,
+    GPIO_HIGH_TO_LOW_TRANSITION); //generate interrupts for bmp0, GPIO_PIN3, GPIO_HIGH_TO_LOW_TRANSITION); //generate interrupts for bmp3
+    GPIO_enableInterrupt( GPIO_PORT_P4, GPIO_PIN0);
+    GPIO_enableInterrupt( GPIO_PORT_P4, GPIO_PIN2);
+    GPIO_enableInterrupt( GPIO_PORT_P4, GPIO_PIN3);
+    //What does this line do again?
+
+    //generate interrupts on high to low(button pressed) and link to port4_isr()
+}
+
+void Timer_Init()
+{
+
+    //timer_A1_base
+    TimerAc.clockSource = TIMER_A_CLOCKSOURCE_SMCLK; //config timerA1 to count using SMCLK
+    TimerAc.clockSourceDivider = TIMER_A_CLOCKSOURCE_DIVIDER_64; //config timerA1 with a divider of 64
+    TimerAc.timerPeriod = 37500 / 2; //set period to elapse once every 50ms
+    TimerAc.timerInterruptEnable_TAIE = TIMER_A_TAIE_INTERRUPT_ENABLE; //enable TAI
+    Timer_A_configureUpMode(TIMER_A1_BASE, &TimerAc);
+    Timer_A_startCounter(TIMER_A1_BASE, TIMER_A_UP_MODE); //start timer
+    Timer_A_registerInterrupt( TIMER_A1_BASE,
+    TIMER_A_CCRX_AND_OVERFLOW_INTERRUPT,
+                              Timer_ISR); //register the ISR
+
+}
+
+void Port4_ISR()
+{
+    __delay_cycles(240e3); // 10 ms delay (24 MHz clock) debounce the press
+    uint8_t active_pins = GPIO_getEnabledInterruptStatus(GPIO_PORT_P4);
+    if (active_pins & GPIO_PIN0)
+    { //check if bmp0 was the trigger
+        GPIO_clearInterruptFlag( GPIO_PORT_P4, GPIO_PIN0); //clear bmp0 flag
+        if (!GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN0))
+        {
+
+        }
+    }
+    if (active_pins & GPIO_PIN2)
+    {
+        GPIO_clearInterruptFlag(GPIO_PORT_P4, GPIO_PIN2);
+        if (!GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN2))
+        {
+
+        }
+    }
+    if (active_pins & GPIO_PIN3)
+    {
+        GPIO_clearInterruptFlag(GPIO_PORT_P4, GPIO_PIN3);
+        if (!GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN3))
+        {
+
+        }
+    }
+    if (active_pins & GPIO_PIN5)
+    { //check if bmp0 was the trigger
+        GPIO_clearInterruptFlag( GPIO_PORT_P4, GPIO_PIN5); //clear bmp0 flag
+        if (!GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN5))
+        {
+
+        }
+    }
+    if (active_pins & GPIO_PIN6)
+    { //check if bmp0 was the trigger
+        GPIO_clearInterruptFlag( GPIO_PORT_P4, GPIO_PIN6); //clear bmp0 flag
+        if (!GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN6))
+        {
+
+        }
+    }
+    if (active_pins & GPIO_PIN7)
+    { //check if bmp0 was the trigger
+        GPIO_clearInterruptFlag( GPIO_PORT_P4, GPIO_PIN7); //clear bmp0 flag
+        if (!GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN7))
+        {
+
+        }
+    }
+}
+
+void Timer_ISR()
+{
+
+    Timer_A_clearInterruptFlag( TIMER_A1_BASE); //acknowledge the interrupt source
+    timer_reset_counter++;  //increment counter
+
+}
+
+void UpdateTime()
+{
+    time1[0]++;  // Increment tenths of seconds
+    if (time1[0] == 20)
+    {  // If a whole second has passed...
+        time1[0] = 0;    // Reset tenths of seconds
+        time1[1]++;      // And increment seconds
+        if (time1[1] == 60)
+        { // If a minute has passed...
+            time1[1] = 0;   // Reset seconds
+            time1[2]++;     // Increment minutes
+            if (time1[2] == 60)
+            {  // and so on...
+                time1[2] = 0;
+                time1[3]++;
+                if (time1[3] == 24)
+                {
+                    time1[3] = 0;
+                }
+            }
+        }
+    }
+    //printf("%2u:%02u:%02u.%02u\r",time[3],time[2],time[1],time[0] * 5);
+    printf(".%02u\r\n", time1[0] * 5);
+}
+
+void Red()
+{
+    //2.0 high, all else low
+    GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN1 | GPIO_PIN2);
+    GPIO_setOutputHighOnPin(GPIO_PORT_P2, GPIO_PIN0);
+}
+void Green()
+{
+    //2.1 high, all else low
+    GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN0 | GPIO_PIN2);
+    GPIO_setOutputHighOnPin(GPIO_PORT_P2, GPIO_PIN1);
+}
+void Blue()
+{
+    //2.2 high, all else low
+    GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN0 | GPIO_PIN1);
+    GPIO_setOutputHighOnPin(GPIO_PORT_P2, GPIO_PIN2);
+}
+void Magenta()
+{
+    //2.0 and 2.2 high, all else low
+    GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN1);
+    GPIO_setOutputHighOnPin(GPIO_PORT_P2, GPIO_PIN0 | GPIO_PIN2);
+}
+void Yellow()
+{
+    //2.0 and 2.1 high, all else low
+    GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN2);
+    GPIO_setOutputHighOnPin(GPIO_PORT_P2, GPIO_PIN0 | GPIO_PIN1);
+}
+void Cyan()
+{
+    //2.1 and 2.2 high, all else low
+    GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN0);
+    GPIO_setOutputHighOnPin(GPIO_PORT_P2, GPIO_PIN1 | GPIO_PIN2);
+}
+void NoColor()
+{
+    //Turns everything off
+    GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN0 | GPIO_PIN1 | GPIO_PIN2);
+}
+
+void Color_Wait()
+{
+    timer_reset_counter = 0;
+    while (timer_reset_counter < 10)
+        ;
+    NoColor();
+    timer_reset_counter = 0;
+    while (timer_reset_counter < 10)
+        ;
+}
+int Check_Color(uint8_t color)/*method checks for user input and compares it to the solution. Returns 0 if wrong, 1 if correct, or 2 if no answer at all.*/
+{
+    //push = GPIO_getInputPinValue(GPIO_PORT_P2, GPIO_PIN3);
+    BMP0 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN0); //4.0
+    BMP1 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN2); //4.2
+    BMP2 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN3); //4.3
+    BMP3 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN5); //4.5
+    BMP4 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN6); //4.6
+    BMP5 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN7); //4.7
+    //printf("0: %u, 1: %u, 2: %u, 3: %u, 4: %u, 5: %u\n", BMP0, BMP1, BMP2, BMP3, BMP4, BMP5);
+
+    if (!BMP0)
+    {
+        while (BMP0 == 0)
+        {
+            __delay_cycles(240e3);
+            Red(); //color() associated with the button
+            BMP0 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN0);
+            if (BMP0 == 1)
+            {
+                NoColor();
+            }
+            push = GPIO_getInputPinValue(GPIO_PORT_P2, GPIO_PIN3);
+            if (push)
+            {
+                break;
+            }
+        }
+
+        if (push)
+        {
+            timer_reset_counter = 0;
+            return 2;
+        }
+        if (color == 0)
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+
+    if (!BMP1)
+    {
+        while (BMP1 == 0)
+        {
+            __delay_cycles(240e3);
+            Green(); //color() associated with the button
+            BMP1 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN2);
+            if (BMP1 == 1)
+            {
+                NoColor();
+            }
+            push = GPIO_getInputPinValue(GPIO_PORT_P2, GPIO_PIN3);
+            if (push)
+            {
+                break;
+            }
+        }
+        if (push)
+        {
+            timer_reset_counter = 0;
+            return 2;
+        }
+        if (color == 1)
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    if (!BMP2)
+    {
+        while (BMP2 == 0)
+        {
+            __delay_cycles(240e3);
+            Blue(); //color() associated with the button
+            BMP2 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN3);
+            if (BMP2 == 1)
+            {
+                NoColor();
+            }
+            push = GPIO_getInputPinValue(GPIO_PORT_P2, GPIO_PIN3);
+            if (push)
+            {
+                break;
+            }
+        }
+        if (push)
+        {
+            timer_reset_counter = 0;
+            return 2;
+        }
+        if (color == 2)
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    if (!BMP3)
+    {
+        while (BMP3 == 0)
+        {
+            __delay_cycles(240e3);
+            Yellow(); //color() associated with the button
+            BMP3 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN5);
+            if (BMP3 == 1)
+            {
+                NoColor();
+            }
+            push = GPIO_getInputPinValue(GPIO_PORT_P2, GPIO_PIN3);
+            if (push)
+            {
+                break;
+            }
+        }
+        if (push)
+        {
+            timer_reset_counter = 0;
+            return 2;
+        }
+        if (color == 3)
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    if (!BMP4)
+    {
+        while (BMP4 == 0)
+        {
+            __delay_cycles(240e3);
+            Cyan(); //color() associated with the button
+            BMP4 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN6);
+            if (BMP4 == 1)
+            {
+                NoColor();
+            }
+            push = GPIO_getInputPinValue(GPIO_PORT_P2, GPIO_PIN3);
+            if (push)
+            {
+                break;
+            }
+        }
+        if (push)
+        {
+            timer_reset_counter = 0;
+            return 2;
+        }
+        if (color == 4)
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    if (!BMP5)
+    {
+        while (BMP5 == 0)
+        {
+            __delay_cycles(240e3);
+            Magenta(); //color() associated with the button
+            BMP5 = GPIO_getInputPinValue(GPIO_PORT_P4, GPIO_PIN7);
+            if (BMP5 == 1)
+            {
+                NoColor();
+            }
+            push = GPIO_getInputPinValue(GPIO_PORT_P2, GPIO_PIN3);
+            if (push)
+            {
+                break;
+            }
+        }
+        if (push)
+        {
+            timer_reset_counter = 0;
+            return 2;
+        }
+        if (color == 5)
+        {
+            return 1;
+        }
+        else
+        {
+            return 0;
+        }
+    }
+    else
+    {
+        return 2;
+    }
+}
+void Win()
+{
+    printf("You Win!");
+    push = 0;
+    game_over = 1;
+    while (!push)
+    { // wait until push to keep toggling biLED
+        push = GPIO_getInputPinValue(GPIO_PORT_P2, GPIO_PIN3);
+        GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN4); //set biLED green
+        GPIO_setOutputHighOnPin(GPIO_PORT_P2, GPIO_PIN5);
+        timer_reset_counter = 0;
+        while (timer_reset_counter < 5)
+            ;
+        GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN4 | GPIO_PIN5); //turn biLED off
+        timer_reset_counter = 0;
+        while (timer_reset_counter < 5)
+            ;
+    }
+}
+void Lose()
+{
+    push = 0;
+    game_over = 1;
+    printf("INCORRECT!");
+    printf("Player Score: %u", x -= 1); //add variable for players score
+    while (!push)
+    { // wait until push to keep toggling biLED
+
+        push = GPIO_getInputPinValue(GPIO_PORT_P2, GPIO_PIN3); //check for push
+        //while (timer_reset_counter < 5)
+        GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN5); //set biLED RED
+        GPIO_setOutputHighOnPin(GPIO_PORT_P2, GPIO_PIN4); //
+        timer_reset_counter = 0;
+        while (timer_reset_counter < 5)
+            ;
+
+        GPIO_setOutputLowOnPin(GPIO_PORT_P2, GPIO_PIN4); //turn biLED off
+        timer_reset_counter = 0;
+
+        while (timer_reset_counter < 5)
+            ;
+    }
+}
